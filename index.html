@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Eyou</title>
+  </head>
+  <body>
+    <script>
+      // Lista para guardar los mensajes ya mostrados y evitar re-render innecesario
+      let mensajesPrevios = [];
+
+      // Crear contenedor principal de la aplicación
+      const contenedorApp = document.createElement("div");
+      contenedorApp.style.width = "100%";
+      contenedorApp.style.height = "98.2vh";
+      contenedorApp.style.display = "flex";
+      contenedorApp.style.flexDirection = "column";
+      contenedorApp.style.justifyContent = "space-between";
+      contenedorApp.style.fontFamily = "Arial, sans-serif";
+      document.body.appendChild(contenedorApp);
+
+      // Crear botón para cambiar entre tema claro y oscuro
+      const botonTema = document.createElement("button");
+      botonTema.innerText = "Cambiar tema 😎";
+      botonTema.style.position = "absolute";
+      botonTema.style.top = "10px";
+      botonTema.style.right = "10px";
+      botonTema.style.padding = "10px 15px";
+      botonTema.style.border = "none";
+      botonTema.style.borderRadius = "8px";
+      botonTema.style.cursor = "pointer";
+      botonTema.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+      contenedorApp.appendChild(botonTema);
+
+      // Crear contenedor donde se mostrarán los mensajes
+      const contenedorMensajes = document.createElement("div");
+      contenedorMensajes.style.flex = "1";
+      contenedorMensajes.style.overflowY = "auto";
+      contenedorMensajes.style.padding = "20px";
+      contenedorMensajes.style.display = "flex";
+      contenedorMensajes.style.flexDirection = "column";
+      contenedorMensajes.style.gap = "10px";
+      contenedorApp.appendChild(contenedorMensajes);
+
+      // Crear contenedor de la entrada de texto y botón de envío
+      const contenedorEntrada = document.createElement("div");
+      contenedorEntrada.style.display = "flex";
+      contenedorEntrada.style.padding = "10px";
+      contenedorEntrada.style.borderTop = "1px solid #ccc";
+      contenedorEntrada.style.gap = "10px";
+      contenedorApp.appendChild(contenedorEntrada);
+
+      // Crear campo de texto para escribir los mensajes
+      const campoTexto = document.createElement("input");
+      campoTexto.type = "text";
+      campoTexto.placeholder = "Escribe un mensaje... ✍️";
+      campoTexto.maxLength = 140;
+      campoTexto.style.flex = "1";
+      campoTexto.style.padding = "12px";
+      campoTexto.style.border = "1px solid #ccc";
+      campoTexto.style.borderRadius = "20px";
+      campoTexto.style.outline = "none";
+      contenedorEntrada.appendChild(campoTexto);
+
+      // Crear botón para enviar los mensajes
+      const botonEnviar = document.createElement("button");
+      botonEnviar.innerText = "Enviar ✉️";
+      botonEnviar.style.padding = "12px 20px";
+      botonEnviar.style.border = "none";
+      botonEnviar.style.borderRadius = "20px";
+      botonEnviar.style.cursor = "pointer";
+      botonEnviar.style.fontWeight = "bold";
+      botonEnviar.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
+      contenedorEntrada.appendChild(botonEnviar);
+
+      // Cargar el tema actual desde localStorage, por defecto es "claro"
+      let temaActual = localStorage.getItem("tema") || "claro";
+
+      // Función para aplicar los estilos del tema (claro u oscuro)
+      function aplicarTema(tema) {
+        const claro = tema === "claro";
+        temaActual = tema;
+
+        // Cambiar colores de toda la app según el tema
+        contenedorApp.style.backgroundColor = claro ? "#f9fafb" : "#0f172a";
+        contenedorMensajes.style.backgroundColor = claro ? "#ffffff" : "#1e293b";
+        contenedorMensajes.style.color = claro ? "#111827" : "#f1f5f9";
+        contenedorEntrada.style.backgroundColor = claro ? "#f1f5f9" : "#1e293b";
+        campoTexto.style.backgroundColor = claro ? "#ffffff" : "#334155";
+        campoTexto.style.color = claro ? "#111827" : "#f1f5f9";
+        campoTexto.style.border = claro ? "1px solid #cbd5e1" : "1px solid #475569";
+        botonEnviar.style.backgroundColor = claro ? "#2563eb" : "#3b82f6";
+        botonEnviar.style.color = "#ffffff";
+        botonTema.style.backgroundColor = claro ? "#e2e8f0" : "#334155";
+        botonTema.style.color = claro ? "#111827" : "#f1f5f9";
+
+        // Guardar el tema en localStorage
+        localStorage.setItem("tema", tema);
+
+        // Volver a dibujar los mensajes para que se actualicen los colores
+        mostrarMensajes(mensajesPrevios);
+      }
+
+      // Aplicar el tema guardado al cargar la página
+      aplicarTema(temaActual);
+
+      // Evento para cambiar de tema al hacer clic en el botón
+      botonTema.addEventListener("click", () => {
+        const nuevo = temaActual === "claro" ? "oscuro" : "claro";
+        aplicarTema(nuevo);
+      });
+
+      // Función para obtener los mensajes desde el servidor
+      async function obtenerMensajes() {
+        try {
+          const respuesta = await fetch("https://chat.devng.online/chats");
+          const mensajes = await respuesta.json();
+          mostrarMensajes(mensajes);
+        } catch (error) {
+          console.error("Error al obtener mensajes", error);
+          // Si falla la petición, mostrar mensaje de error
+          mostrarMensajes([
+            { username: "Sistema", message: "Servidor no disponible" },
+          ]);
+        }
+      }
+
+      // Función para mostrar los mensajes en pantalla
+      function mostrarMensajes(lista) {
+        // Evita volver a renderizar si los mensajes no han cambiado
+        const esIgual =
+          mensajesPrevios.length === lista.length &&
+          mensajesPrevios.every(
+            (msg, i) =>
+              msg.message === lista[i].message &&
+              msg.username === lista[i].username
+          );
+
+        if (esIgual) return;
+
+        // Limpiar mensajes anteriores
+        contenedorMensajes.innerHTML = "";
+
+        // Dibujar cada burbuja de mensaje
+        lista.forEach(({ username, message }, index) => {
+          const burbuja = document.createElement("div");
+
+          burbuja.style.padding = "10px 15px";
+          burbuja.style.borderRadius = "15px";
+          burbuja.style.maxWidth = "75%";
+          burbuja.style.alignSelf = username === "Jose Ordonez" ? "flex-end" : "flex-start";
+
+          // Asignar colores según el remitente y el tema
+          const esJose = username === "Jose Ordonez";
+          const claro = temaActual === "claro";
+
+          burbuja.style.backgroundColor = esJose
+            ? (claro ? "#2563eb" : "#3b82f6")
+            : (claro ? "#e2e8f0" : "#334155");
+          burbuja.style.color = esJose
+            ? "#ffffff"
+            : (claro ? "#111827" : "#f1f5f9");
+
+          burbuja.style.boxShadow = "0 2px 5px rgba(0,0,0,0.1)";
+          burbuja.innerHTML = `<b>${username}</b><br>${message}`;
+
+          // Animación para mensajes nuevos
+          const esNuevo = index >= mensajesPrevios.length;
+          if (esNuevo) {
+            burbuja.style.opacity = "0";
+            burbuja.style.transform = "translateY(10px)";
+            burbuja.style.transition = "opacity 0.4s ease, transform 0.4s ease";
+
+            requestAnimationFrame(() => {
+              burbuja.style.opacity = "1";
+              burbuja.style.transform = "translateY(0)";
+            });
+          }
+
+          contenedorMensajes.appendChild(burbuja);
+        });
+
+        // Actualizar lista de mensajes previos
+        mensajesPrevios = lista;
+
+        // Hacer scroll automático al final
+        contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
+      }
+
+      // Función para enviar un mensaje al servidor
+      async function enviarMensaje(texto) {
+        const nuevo = {
+          username: "Jose Ordonez",
+          message: texto,
+        };
+
+        try {
+          await fetch("https://chat.devng.online/chats", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(nuevo),
+          });
+          await obtenerMensajes(); // Actualiza mensajes después de enviar
+          campoTexto.value = ""; // Limpia el input
+        } catch (error) {
+          console.error("Error al enviar mensaje", error);
+        }
+      }
+
+      // Enviar mensaje con la tecla Enter
+      campoTexto.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && campoTexto.value.trim() !== "") {
+          enviarMensaje(campoTexto.value.trim());
+        }
+      });
+
+      // Enviar mensaje al hacer clic en el botón
+      botonEnviar.addEventListener("click", () => {
+        if (campoTexto.value.trim() !== "") {
+          enviarMensaje(campoTexto.value.trim());
+        }
+      });
+
+      // Carga inicial de mensajes y actualizaciones periódicas cada 5 segundos
+      obtenerMensajes();
+      setInterval(obtenerMensajes, 5000);
+    </script>
+  </body>
+</html>
